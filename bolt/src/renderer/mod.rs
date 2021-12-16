@@ -4,7 +4,10 @@ use wgpu::util::DeviceExt;
 pub type Window = winit::window::Window;
 
 // GOALS:
-// 1. Draw one quad
+// 1. Draw one quad (DONE)
+// 2. Draw rotated quads
+// 3. Draw quads batched
+// 4. textures babii
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -43,12 +46,6 @@ struct CameraUniform {
 }
 
 impl CameraUniform {
-    fn new() -> Self {
-        Self {
-            view_projection: cgmath::Matrix4::identity().into(),
-        }
-    }
-
     fn from(matrix: cgmath::Matrix4<f32>) -> Self {
         Self {
             view_projection: matrix.into(),
@@ -79,7 +76,11 @@ const INDICES: &[u16] = &[0, 2, 1, 0, 3, 2];
 
 #[derive(Copy, Clone)]
 pub enum Shape2D {
-    Quad { position: [f32; 3], color: [f32; 4] },
+    Quad {
+        position: [f32; 3],
+        scale: [f32; 3],
+        color: [f32; 4],
+    },
 }
 
 async fn create_gpu_device(
@@ -272,6 +273,47 @@ impl Renderer2D {
                 label: Some("Render Encoder"),
             });
 
+        let mut verts: Vec<Vertex> = vec![];
+        match shape {
+            Shape2D::Quad {
+                position,
+                scale,
+                color,
+            } => {
+                let half_scale_x = scale[0] / 2.0;
+                let half_scale_y = scale[1] / 2.0;
+
+                verts.push(Vertex {
+                    position: [
+                        -half_scale_x + position[0],
+                        -half_scale_y + position[1],
+                        0.0,
+                    ],
+                    color,
+                });
+                verts.push(Vertex {
+                    position: [-half_scale_x + position[0], half_scale_y + position[1], 0.0],
+                    color,
+                });
+                verts.push(Vertex {
+                    position: [half_scale_x + position[0], half_scale_y + position[1], 0.0],
+                    color,
+                });
+                verts.push(Vertex {
+                    position: [half_scale_x + position[0], -half_scale_y + position[1], 0.0],
+                    color,
+                });
+            }
+        }
+
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Renderer2D Vertex Buffer"),
+                contents: bytemuck::cast_slice(&verts),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render pass"),
@@ -293,7 +335,7 @@ impl Renderer2D {
 
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
         }

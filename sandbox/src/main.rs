@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
     let renderer = Renderer2D::new(&window);
 
     let quad = Shape2D::Quad {
+        scale: [50.0, 50.0, 1.0],
         position: [0.0, 0.0, 0.0],
         color: [0.1, 0.2, 0.3, 1.0],
     };
