@@ -7,3 +7,13 @@ edition = "2021"
 
 [dependencies]
 bolt = { path = "../bolt" }
+#TODO: Remove as many of these as possible:
+anyhow = "*"
+winit = "*"
+image="*"
+cgmath = "*"
+env_logger="*"
+log="*"
+wgpu = "*"
+pollster="*"
+bytemuck = { version = "*", features = ["derive"] }
