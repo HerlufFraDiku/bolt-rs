@@ -1,3 +1,3 @@
-pub fn hello_world() {
-    println!("Hello, World!");
-}
+pub mod renderer;
+
+pub use renderer::{Renderer2D, Shape2D};
